@@ -1,38 +1,31 @@
 const ADMIN_CODE = "Pégase123";
 
-let cars = [];
+const API = "/api/cars";
 
+let cars = [];
 let selectedPhotos = [];
 
 const $ = id => document.getElementById(id);
 
 
-/* =========================
-   CONNEXION
-========================= */
+/* CONNEXION */
 
 $("loginButton").addEventListener("click", login);
 
 $("adminCode").addEventListener("keydown", event => {
-
   if (event.key === "Enter") {
     login();
   }
-
 });
 
 
 function login() {
 
-  const code = $("adminCode").value;
-
-  if (code === ADMIN_CODE) {
+  if ($("adminCode").value === ADMIN_CODE) {
 
     $("loginError").textContent = "";
 
     $("loginButton").disabled = true;
-
-    $("adminCode").value = "";
 
     $("adminPanel").hidden = false;
 
@@ -42,17 +35,14 @@ function login() {
 
   } else {
 
-    $("loginError").textContent =
-      "Code incorrect.";
+    $("loginError").textContent = "Code incorrect.";
 
   }
 
 }
 
 
-/* =========================
-   DÉCONNEXION
-========================= */
+/* DÉCONNEXION */
 
 $("logoutButton").addEventListener("click", () => {
 
@@ -65,15 +55,26 @@ $("logoutButton").addEventListener("click", () => {
 });
 
 
-/* =========================
-   PHOTOS
-========================= */
+/* CHARGER LES VOITURES */
+
+async function loadCars() {
+
+  const response = await fetch(API);
+
+  cars = await response.json();
+
+  renderAdmin();
+
+}
+
+
+/* PHOTOS */
 
 $("photos").addEventListener("change", event => {
 
-  const files = [...event.target.files];
-
   selectedPhotos = [];
+
+  const files = [...event.target.files];
 
   files.forEach(file => {
 
@@ -104,11 +105,9 @@ function renderPreview() {
 }
 
 
-/* =========================
-   AJOUTER / MODIFIER
-========================= */
+/* AJOUTER / MODIFIER */
 
-$("carForm").addEventListener("submit", event => {
+$("carForm").addEventListener("submit", async event => {
 
   event.preventDefault();
 
@@ -116,8 +115,6 @@ $("carForm").addEventListener("submit", event => {
 
 
   const car = {
-
-    id: editId || Date.now().toString(),
 
     brand: $("brand").value,
 
@@ -137,31 +134,55 @@ $("carForm").addEventListener("submit", event => {
 
     description: $("description").value,
 
-    photos: [...selectedPhotos]
+    photos: selectedPhotos
 
   };
 
 
+  let response;
+
+
   if (editId) {
 
-    cars = cars.map(existingCar =>
-      existingCar.id === editId
-        ? car
-        : existingCar
+    response = await fetch(
+      `${API}?id=${editId}`,
+      {
+        method: "PUT",
+
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify(car)
+      }
     );
 
   } else {
 
-    cars.push(car);
+    response = await fetch(
+      API,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify(car)
+      }
+    );
 
   }
 
 
-  saveCars();
+  if (!response.ok) {
 
-  renderAdmin();
+    alert("Erreur lors de l'enregistrement.");
 
-  resetForm();
+    return;
+
+  }
+
 
   alert(
     editId
@@ -169,113 +190,72 @@ $("carForm").addEventListener("submit", event => {
       : "Annonce ajoutée !"
   );
 
+
+  resetForm();
+
+  await loadCars();
+
 });
 
 
-/* =========================
-   SAUVEGARDE LOCALE
-========================= */
-
-function saveCars() {
-
-  localStorage.setItem(
-    "pegaseCars",
-    JSON.stringify(cars)
-  );
-
-}
-
-
-function loadCars() {
-
-  const saved =
-    localStorage.getItem("pegaseCars");
-
-  if (saved) {
-
-    try {
-
-      cars = JSON.parse(saved);
-
-    } catch {
-
-      cars = [];
-
-    }
-
-  }
-
-  renderAdmin();
-
-}
-
-
-/* =========================
-   AFFICHAGE ADMIN
-========================= */
+/* AFFICHAGE */
 
 function renderAdmin() {
 
   $("carCount").textContent = cars.length;
 
 
-  $("adminCars").innerHTML =
-    cars.map(car => `
+  $("adminCars").innerHTML = cars.map(car => `
 
-      <div class="admin-car">
+    <div class="admin-car">
 
-        <div>
+      <div>
 
-          ${
-            car.photos?.[0]
-              ? `<img
-                  src="${car.photos[0]}"
-                  alt=""
-                >`
-              : ""
-          }
+        ${
+          car.photos?.[0]
+            ? `<img src="${car.photos[0]}" alt="">`
+            : ""
+        }
 
-          <strong>
-            ${escapeHTML(car.brand)}
-            ${escapeHTML(car.model)}
-          </strong>
+        <strong>
+          ${escapeHTML(car.brand)}
+          ${escapeHTML(car.model)}
+        </strong>
 
-          <br>
+        <br>
 
-          <span>
-            ${escapeHTML(car.price)}
-          </span>
-
-        </div>
-
-
-        <div class="admin-actions">
-
-          <button
-            onclick="editCar('${car.id}')"
-          >
-            ✏️ Modifier
-          </button>
-
-          <button
-            onclick="deleteCar('${car.id}')"
-            class="delete-button"
-          >
-            🗑️ Supprimer
-          </button>
-
-        </div>
+        <span>
+          ${escapeHTML(car.price)}
+        </span>
 
       </div>
 
-    `).join("");
+
+      <div class="admin-actions">
+
+        <button
+          onclick="editCar('${car.id}')"
+        >
+          ✏️ Modifier
+        </button>
+
+        <button
+          onclick="deleteCar('${car.id}')"
+          class="delete-button"
+        >
+          🗑️ Supprimer
+        </button>
+
+      </div>
+
+    </div>
+
+  `).join("");
 
 }
 
 
-/* =========================
-   MODIFIER
-========================= */
+/* MODIFIER */
 
 function editCar(id) {
 
@@ -307,8 +287,9 @@ function editCar(id) {
     car.description || "";
 
 
-  selectedPhotos =
-    [...(car.photos || [])];
+  selectedPhotos = [
+    ...(car.photos || [])
+  ];
 
   renderPreview();
 
@@ -316,43 +297,45 @@ function editCar(id) {
   $("formTitle").textContent =
     "Modifier le véhicule";
 
-
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
-
 }
 
 
-/* =========================
-   SUPPRIMER
-========================= */
+/* SUPPRIMER */
 
-function deleteCar(id) {
+async function deleteCar(id) {
 
-  const confirmation =
-    confirm(
+  if (
+    !confirm(
       "Supprimer définitivement cette annonce ?"
-    );
-
-  if (!confirmation) return;
-
-
-  cars =
-    cars.filter(car => car.id !== id);
+    )
+  ) {
+    return;
+  }
 
 
-  saveCars();
+  const response = await fetch(
+    `${API}?id=${id}`,
+    {
+      method: "DELETE"
+    }
+  );
 
-  renderAdmin();
+
+  if (!response.ok) {
+
+    alert("Erreur lors de la suppression.");
+
+    return;
+
+  }
+
+
+  await loadCars();
 
 }
 
 
-/* =========================
-   ANNULER
-========================= */
+/* ANNULER */
 
 $("cancelButton").addEventListener(
   "click",
@@ -376,9 +359,7 @@ function resetForm() {
 }
 
 
-/* =========================
-   SÉCURITÉ AFFICHAGE
-========================= */
+/* PROTECTION AFFICHAGE */
 
 function escapeHTML(value) {
 
@@ -390,7 +371,7 @@ function escapeHTML(value) {
       ">": "&gt;",
       '"': "&quot;",
       "'": "&#039;"
-    })[character]
+    }[character])
   );
 
 }
