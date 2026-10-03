@@ -1,7 +1,30 @@
-const cars = [];
+const API = "/api/cars";
 
 
-function renderCars() {
+async function getCars() {
+
+  try {
+
+    const response = await fetch(API);
+
+    if (!response.ok) {
+      throw new Error("Erreur API");
+    }
+
+    return await response.json();
+
+  } catch (error) {
+
+    console.error(error);
+
+    return [];
+
+  }
+
+}
+
+
+async function renderCars() {
 
   const search =
     document.getElementById("search").value.toLowerCase();
@@ -14,6 +37,9 @@ function renderCars() {
 
   const empty =
     document.getElementById("empty");
+
+
+  const cars = await getCars();
 
 
   const filtered = cars.filter(car => {
@@ -37,7 +63,10 @@ function renderCars() {
 
         ${
           car.photos && car.photos.length
-            ? `<img src="${car.photos[0]}" alt="${car.brand} ${car.model}">`
+            ? `<img
+                src="${car.photos[0]}"
+                alt="${escapeHTML(car.brand)} ${escapeHTML(car.model)}"
+              >`
             : ""
         }
 
@@ -47,29 +76,30 @@ function renderCars() {
       <div class="car-body">
 
         <h3>
-          ${car.brand} ${car.model}
+          ${escapeHTML(car.brand)}
+          ${escapeHTML(car.model)}
         </h3>
 
         <div class="price">
-          ${car.price}
+          ${escapeHTML(car.price)}
         </div>
 
 
         <div class="meta">
 
-          <span>${car.year}</span>
+          <span>${escapeHTML(car.year)}</span>
 
-          <span>${car.km}</span>
+          <span>${escapeHTML(car.km)}</span>
 
-          <span>${car.fuel}</span>
+          <span>${escapeHTML(car.fuel)}</span>
 
-          <span>${car.gear}</span>
+          <span>${escapeHTML(car.gear)}</span>
 
         </div>
 
 
         <p>
-          ${car.description || ""}
+          ${escapeHTML(car.description || "")}
         </p>
 
 
@@ -88,6 +118,22 @@ function renderCars() {
 
 
   empty.hidden = filtered.length !== 0;
+
+}
+
+
+function escapeHTML(value) {
+
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    character => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[character])
+  );
 
 }
 
