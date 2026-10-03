@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/cars.js": {
+      "runtime": "nodejs22.x"
+    }
+  }
+}
